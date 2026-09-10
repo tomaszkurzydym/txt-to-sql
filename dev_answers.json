@@ -1,0 +1,42 @@
+{
+  "q_001": {
+    "sql": "SELECT COUNT(*) FROM account JOIN district ON account.district_id = district.district_id WHERE district.A3 = 'Prague';",
+    "answer": "COUNT(*): 554"
+  },
+  "q_002": {
+    "sql": "SELECT SUM(amount) FROM loan WHERE status = 'A';",
+    "answer": "SUM(amount): 18,603,216"
+  },
+  "q_003": {
+    "sql": "SELECT COUNT(*) FROM disp WHERE type = 'OWNER';",
+    "answer": "COUNT(*): 4,500"
+  },
+  "q_004": {
+    "sql": "SELECT AVG(payments) FROM loan;",
+    "answer": "AVG(payments): 4,190.66"
+  },
+  "q_005": {
+    "sql": "SELECT COUNT(*) FROM client JOIN district ON client.district_id = district.district_id WHERE client.gender = 'F' AND district.A11 > 10000;",
+    "answer": "COUNT(*): 636"
+  },
+  "q_006": {
+    "sql": "SELECT COUNT(DISTINCT c.client_id) FROM client c JOIN disp d ON c.client_id = d.client_id JOIN account a ON d.account_id = a.account_id JOIN district di ON a.district_id = di.district_id WHERE d.type = 'OWNER' AND di.A3 = 'Prague';",
+    "answer": "COUNT(DISTINCT c.client_id): 554"
+  },
+  "q_007": {
+    "sql": "SELECT SUM(amount) FROM trans WHERE account_id = 1 AND strftime('%Y', date) = '1997';",
+    "answer": "SUM(amount): 96,418"
+  },
+  "q_008": {
+    "sql": "SELECT d.A2 AS district_name, COUNT(DISTINCT di.client_id) AS owner_count\nFROM district d\nJOIN account a ON d.district_id = a.district_id\nJOIN disp di ON a.account_id = di.account_id AND di.type = 'OWNER'\nWHERE d.A3 = 'south Moravia'\nGROUP BY d.district_id, d.A2\nORDER BY owner_count DESC;",
+    "answer": "14 row(s), 2 column(s):\n   district_name  owner_count\n    Brno - mesto          128\n            Zlin           92\n        Kromeriz           57\n   Brno - venkov           53\nZdar nad Sazavou           53\n       Prostejov           51\n         Blansko           50\n          Vyskov           49\n          Trebic           45\n         Breclav           44\nUherske Hradiste           44\n         Hodonin           41\n          Znojmo           39\n         Jihlava           32"
+  },
+  "q_009": {
+    "sql": "SELECT c.client_id, c.gender, SUM(l.amount) AS total_loan_amount\nFROM client c\nJOIN disp d ON c.client_id = d.client_id\nJOIN loan l ON d.account_id = l.account_id\nWHERE d.type = 'OWNER'\nGROUP BY c.client_id, c.gender\nORDER BY total_loan_amount DESC\nLIMIT 5;",
+    "answer": "5 row(s), 3 column(s):\n client_id gender  total_loan_amount\n      9340      M             590820\n     10997      F             566640\n      2823      F             541200\n       981      M             538500\n      3546      M             504000"
+  },
+  "q_010": {
+    "sql": "SELECT COUNT(DISTINCT loan.loan_id) FROM loan JOIN account ON loan.account_id = account.account_id JOIN disp ON account.account_id = disp.account_id JOIN client ON disp.client_id = client.client_id JOIN district ON client.district_id = district.district_id WHERE loan.status = 'C' AND disp.type = 'OWNER' AND client.gender = 'M' AND district.A3 = 'north Bohemia';",
+    "answer": "COUNT(DISTINCT loan.loan_id): 18"
+  }
+}

@@ -1,0 +1,22 @@
+.env
+.env.*
+!.env.example
+.fireworks_env
+.venv/
+venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+.DS_Store
+**/._*
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipython/
+.ipynb_checkpoints/
+dist/
+build/
+
+# Large DB — regenerate with ./setup.sh
+data/financial.sqlite
