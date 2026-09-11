@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Run the agent on all 10 dev questions and write dev_answers.json."""
+"""Run the agent on all 10 dev questions and write ``dev_answers.json``.
+
+Compares result sets (not SQL strings) against gold expected rows when
+``data/dev_questions_with_answers.json`` is present.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +21,14 @@ os.chdir(ROOT)
 
 
 def _normalize_value(v: Any) -> Any:
+    """Normalize a scalar for bag-of-values comparison.
+
+    Args:
+        v: Cell value (may be numpy/pandas scalar).
+
+    Returns:
+        Python scalar; floats rounded to 2 decimal places.
+    """
     if hasattr(v, "item"):
         v = v.item()
     if isinstance(v, float):
@@ -24,15 +36,38 @@ def _normalize_value(v: Any) -> Any:
     return v
 
 
+def _row_sort_key(row: List[Any]) -> str:
+    """Stable sort key for a normalized row value list."""
+    return str(row)
+
+
+def _value_sort_key(value: Any) -> str:
+    """Stable sort key for a single cell value."""
+    return str(value)
+
+
 def _normalize_rows(rows: Optional[List[Dict[str, Any]]]) -> List[List[Any]]:
-    """Compare results as sorted bags of row value tuples (ignore column names/order)."""
+    """Compare results as sorted bags of row value tuples.
+
+    Ignores column names and column order so semantically equal answers
+    still match when the model selects different aliases.
+
+    Args:
+        rows: List of row dicts, or None.
+
+    Returns:
+        Sorted list of sorted value-lists.
+    """
     if not rows:
         return []
     normalized: List[List[Any]] = []
     for row in rows:
-        vals = sorted((_normalize_value(v) for v in row.values()), key=lambda x: str(x))
+        vals = sorted(
+            (_normalize_value(v) for v in row.values()),
+            key=_value_sort_key,
+        )
         normalized.append(vals)
-    normalized.sort(key=lambda r: str(r))
+    normalized.sort(key=_row_sort_key)
     return normalized
 
 
@@ -40,10 +75,27 @@ def results_match(
     got: Optional[List[Dict[str, Any]]],
     expected: List[Dict[str, Any]],
 ) -> bool:
+    """Return True if ``got`` and ``expected`` contain the same multiset of values.
+
+    Args:
+        got: Agent result rows (may be None).
+        expected: Gold ``expected_result`` rows.
+
+    Returns:
+        Whether the normalized bags of row values are equal.
+    """
     return _normalize_rows(got) == _normalize_rows(expected)
 
 
 def main() -> None:
+    """Run the 10-question eval harness and write ``dev_answers.json``.
+
+    Creates a fresh ``TextToSQLAgent`` per question (no cross-talk). Prints
+    pass/fail against gold when available.
+
+    Raises:
+        SystemExit: If ``FIREWORKS_API_KEY`` is missing (exit code 1).
+    """
     load_dotenv()
     if not os.getenv("FIREWORKS_API_KEY"):
         print("FIREWORKS_API_KEY is not set", file=sys.stderr)
@@ -99,7 +151,10 @@ def main() -> None:
             print(f"  Error: {result.error}")
         print(f"  -> {status}\n")
 
-    out_path.write_text(json.dumps(answers, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    out_path.write_text(
+        json.dumps(answers, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     print("=" * 60)
     print(f"Wrote {out_path}")
     print(f"Pass: {passed}  Fail: {failed}  Total scored: {passed + failed}")

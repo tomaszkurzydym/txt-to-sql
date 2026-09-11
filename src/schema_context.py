@@ -1,4 +1,9 @@
-"""Build prompt-ready schema context from SQLite + BIRD column docs."""
+"""Build prompt-ready schema context from SQLite + BIRD column docs.
+
+Combines live ``PRAGMA table_info`` with BIRD CSV descriptions and a short
+domain-hint block (loan status letters, OWNER/DISPONENT, regions, etc.) so
+the LLM does not invent column names or enum values.
+"""
 
 from __future__ import annotations
 
@@ -29,6 +34,14 @@ Domain value reference (use exact stored values):
 
 
 def _row_desc(row: Dict[str, str]) -> str:
+    """Format one BIRD column-documentation row for the prompt.
+
+    Args:
+        row: Dict from a BIRD description CSV (column names vary slightly).
+
+    Returns:
+        Indented bullet string describing the column.
+    """
     parts: List[str] = []
     col = row.get("original_column_name") or row.get("column_name") or ""
     nice = (row.get("column_name") or "").strip()
@@ -51,9 +64,17 @@ def build_schema_context(
     conn: sqlite3.Connection,
     description_dir: Optional[str] = None,
 ) -> str:
-    """
-    Return a compact, prompt-ready schema string combining PRAGMA schema
-    and BIRD column documentation.
+    """Return a compact, prompt-ready schema string.
+
+    Combines PRAGMA schema and BIRD column documentation plus domain hints.
+
+    Args:
+        conn: Open SQLite connection to ``financial.sqlite``.
+        description_dir: Optional override for BIRD CSV directory. When None,
+            uses the default under ``data/database_description``.
+
+    Returns:
+        Multi-section schema text suitable for the agent system prompt.
     """
     schema = get_schema(conn)
     descriptions = (

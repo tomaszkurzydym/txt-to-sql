@@ -14,3 +14,44 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
+
+# Google-oriented pylint config for the take-home.
+# Keeps docstring / bug / dangerous-pattern checks; quiets structural noise
+# that fights a small PoC (too-many-*, too-few-public-methods, deferred imports).
+[tool.pylint.main]
+jobs = 0
+py-version = "3.11"
+ignore-paths = [".venv", "data"]
+
+[tool.pylint.messages_control]
+disable = [
+    "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-branches",
+    "too-many-statements",
+    "too-many-instance-attributes",
+    "too-many-return-statements",
+    "too-many-public-methods",
+    "duplicate-code",
+    "import-outside-toplevel",
+    "too-many-positional-arguments",
+    "consider-using-f-string",
+]
+
+[tool.pylint.format]
+max-line-length = 100
+indent-string = "    "
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "n", "ex", "id", "df", "ok", "v", "e", "f", "_"]
+# Google-style: require docstrings on modules/classes/functions.
+no-docstring-rgx = "^$"
+docstring-min-length = 1
+
+[tool.pylint.design]
+max-args = 8
+max-attributes = 12
+
+[tool.pylint.similarities]
+min-similarity-lines = 8

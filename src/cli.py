@@ -1,4 +1,9 @@
-"""Interactive Text-to-SQL CLI. Run with: uv run cli (or python -m src.cli)"""
+"""Interactive Text-to-SQL CLI.
+
+Run with: ``uv run cli`` (or ``python -m src.cli``).
+Loads ``FIREWORKS_API_KEY`` from the environment / ``.env``, opens the local
+SQLite DB, and loops on user questions until exit.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +15,11 @@ from dotenv import load_dotenv
 
 
 def _ensure_repo_root_on_path() -> None:
+    """Put the repo root on ``sys.path`` and chdir there for relative data paths.
+
+    Ensures ``import src...`` and ``data/financial.sqlite`` work whether the
+    CLI is launched via ``uv run cli``, ``python -m src.cli``, or a direct path.
+    """
     root = Path(__file__).resolve().parents[1]
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
@@ -17,10 +27,18 @@ def _ensure_repo_root_on_path() -> None:
 
 
 def main() -> None:
+    """Run the interactive text-to-SQL REPL until the user exits.
+
+    Reads questions from stdin, prints generated SQL and result summaries.
+    Commands: ``exit`` / ``quit`` / ``q`` leave; ``reset`` clears history.
+
+    Raises:
+        SystemExit: If ``FIREWORKS_API_KEY`` is missing (exit code 1).
+    """
     _ensure_repo_root_on_path()
     load_dotenv()
 
-    # Prefer FIREWORKS_API_KEY already in the environment (e.g. sourced .fireworks_env).
+    # Prefer FIREWORKS_API_KEY already in the environment (e.g. sourced env).
     if not os.getenv("FIREWORKS_API_KEY"):
         print(
             "Error: FIREWORKS_API_KEY is not set.\n"
