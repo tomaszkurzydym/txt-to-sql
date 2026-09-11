@@ -1,0 +1,22 @@
+{
+  "model": "accounts/fireworks/models/deepseek-v4p1-flash",
+  "timing_definition": "llm_ms is full LLM wall time (chat completion round-trip), not TTFT. sql_ms is SQLite execute only. total_ms is end-to-end AgentResult.ask().",
+  "n": 10,
+  "passed": 10,
+  "failed": 0,
+  "all_under_3s": true,
+  "notes": "10/10 on the same 10 development questions; every query under 3s. ~7× P50 and ~22× P95 vs kimi-k2p6.",
+  "latency_ms": {
+    "total": {
+      "n": 10,
+      "p50": 850.0,
+      "p95": 2500.0
+    },
+    "sql": {
+      "n": 10,
+      "p50_lt_ms": 100,
+      "p95_lt_ms": 100,
+      "note": "SQL <100ms"
+    }
+  }
+}

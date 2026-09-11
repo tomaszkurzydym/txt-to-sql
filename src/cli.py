@@ -29,7 +29,8 @@ def _ensure_repo_root_on_path() -> None:
 def main() -> None:
     """Run the interactive text-to-SQL REPL until the user exits.
 
-    Reads questions from stdin, prints generated SQL and result summaries.
+    Reads questions from stdin, prints generated SQL, result summaries, and
+    per-query latency (LLM / SQL / total wall time).
     Commands: ``exit`` / ``quit`` / ``q`` leave; ``reset`` clears history.
 
     Raises:
@@ -87,6 +88,10 @@ def main() -> None:
             print(result.summary)
         if result.attempts > 1:
             print(f"\n(attempts: {result.attempts})")
+        print(
+            f"\nLatency: LLM {result.llm_ms:.0f}ms | "
+            f"SQL {result.sql_ms:.0f}ms | total {result.total_ms:.0f}ms"
+        )
 
 
 if __name__ == "__main__":

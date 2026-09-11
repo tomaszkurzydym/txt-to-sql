@@ -1,0 +1,26 @@
+{
+  "object": "list",
+  "endpoint": "https://api.fireworks.ai/inference/v1/models",
+  "note": "Serverless chat models used or considered for the latency bake-off. Refresh with: python scripts/bench_latency.py --list-models --out fireworks_models_available.json",
+  "count": 2,
+  "compared": [
+    "accounts/fireworks/models/kimi-k2p6",
+    "accounts/fireworks/models/deepseek-v4p1-flash"
+  ],
+  "data": [
+    {
+      "id": "accounts/fireworks/models/kimi-k2p6",
+      "object": "model",
+      "owned_by": "fireworks",
+      "display_name": "Kimi K2.6",
+      "used_in_bench": true
+    },
+    {
+      "id": "accounts/fireworks/models/deepseek-v4p1-flash",
+      "object": "model",
+      "owned_by": "fireworks",
+      "display_name": "DeepSeek V4.1 Flash",
+      "used_in_bench": true
+    }
+  ]
+}

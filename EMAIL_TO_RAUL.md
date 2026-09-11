@@ -13,8 +13,8 @@ Thanks for the detailed brief — we built a working proof-of-concept that addre
 An interactive terminal agent (`uv run cli`) that:
 
 - Grounds every request in your live SQLite schema **plus** the BIRD column documentation (including value enums like loan status A/B/C/D, OWNER vs DISPONENT, and district regions)
-- Generates read-only SQL via Fireworks (`accounts/fireworks/models/kimi-k2p6` by default)
-- Executes the query, shows SQL + results, and supports follow-up questions
+- Generates read-only SQL via Fireworks (`accounts/fireworks/models/kimi-k2p6` by default; `deepseek-v4p1-flash` as a fast alternative)
+- Executes the query, shows SQL + results + LLM/SQL/total latency, and supports follow-up questions
 - Retries automatically (1–2 times) when SQLite returns an error, feeding the error back to the model
 - Rejects non-SELECT / dangerous statements before execution
 
@@ -41,15 +41,18 @@ We ran the agent non-interactively against `data/dev_questions.json` and compare
 
 Model: `accounts/fireworks/models/kimi-k2p6` (Fireworks serverless).
 
-Artifacts: `dev_answers.json` (model SQL + answer) and `DESIGN.md` (architecture trade-offs).
+Artifacts: `dev_answers.json` (model SQL + answer), `DESIGN.md` (architecture trade-offs), and `latency_comparison.md` / `latency_report*.json` (P50/P95 bake-off).
 
 We validated by (1) live Fireworks inference for every question, (2) executing generated SQL against `financial.sqlite`, and (3) comparing normalized result bags to the published expected results — not by string-matching SQL, since equivalent queries can differ.
 
 ## Key findings
 
 - **Quality:** Schema docs + explicit enum hints (region names, loan status letters, OWNER vs DISPONENT) were enough to reach **10/10** on the public dev set, including tier-3 multi-join questions. Remaining production risk is generalization beyond these 10 questions — hence CI eval expansion below.
-- **Latency path to under 3s P50:** Single successful generation + local SQLite exec is typically well under the old ~7s prototype; retries only fire on failure. Next step is instrumented TTFT/exec timing and a faster fallback model for simple lookups.
-- **Cost:** Open Fireworks models avoid GPT-class unit economics at your projected ~30k queries/day. A quality router (cheap/fast model first, escalate hard queries) keeps cost predictable as you scale past the first 1,000 users.
+- **Latency (measured, 10 dev questions):** We instrumented end-to-end time and split **LLM vs SQL**. LLM time is **full completion wall time**, not time-to-first-token.
+  - `kimi-k2p6`: **P50 ≈ 6.1s, P95 ≈ 54s**. Latency is **LLM-dominated**; SQL is **<100ms**. EU→US RTT is not the driver.
+  - `deepseek-v4p1-flash`: **P50 ≈ 0.85s, P95 ≈ 2.5s**, **10/10**, **all under 3s** (~7× P50 / ~22× P95 vs kimi).
+  - **Recommendation:** a **model router** — fast default for the interactive CLI, escalate hard/analytical queries to a stronger reasoning model.
+- **Cost:** Open Fireworks models avoid GPT-class unit economics at your projected ~30k queries/day. The same router (cheap/fast model first, escalate hard queries) keeps cost predictable as you scale past the first 1,000 users.
 
 ## What we'd tackle next (scope to production)
 
@@ -57,7 +60,7 @@ We validated by (1) live Fireworks inference for every question, (2) executing g
 2. **Schema retrieval** for larger customer DBs — embed `get_rag_corpus()` with `qwen3-embedding-8b`; keep full-schema prompts only for small DBs.
 3. **Eval harness in CI** — expand beyond the 10 public questions; track result-match rate, p50/p95 latency, $/query.
 4. **Safety & tenancy** — read-only DB roles, statement timeouts, row limits, and per-customer connection strings as you envisioned.
-5. **Latency budget** — measure and optimize prompt size, model tiering, and connection pooling toward under 3s P50.
+5. **Model router** — default to `deepseek-v4p1-flash` for interactive P50/P95; escalate hard queries to a stronger reasoning model. Keep p50/p95 in CI as the eval set grows.
 
 ## Post-training (fine-tuning) recommendation
 
@@ -67,7 +70,7 @@ Prompt + retrieval should remain the first line of defense. Once you have a few 
 
 I used AI coding assistance while implementing and iterating on this PoC (scaffolding, boilerplate, and draft wording), and personally reviewed the architecture, validation approach, and customer-facing recommendations.
 
-Happy to walk through the repo in a follow-up and extend it live (tool calling, performance measurement, agent improvements).
+Happy to walk through the repo in a follow-up and extend it live (tool calling, model router, agent improvements).
 
 Best regards,  
 Tom Kurzydym  

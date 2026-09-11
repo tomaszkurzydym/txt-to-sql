@@ -1,0 +1,22 @@
+{
+  "model": "accounts/fireworks/models/kimi-k2p6",
+  "timing_definition": "llm_ms is full LLM wall time (chat completion round-trip), not TTFT. sql_ms is SQLite execute only. total_ms is end-to-end AgentResult.ask().",
+  "n": 10,
+  "passed": 10,
+  "failed": 0,
+  "all_under_3s": false,
+  "notes": "LLM-dominated. SQL <100ms on this set. EU→US RTT is not the driver of P50/P95.",
+  "latency_ms": {
+    "total": {
+      "n": 10,
+      "p50": 6100.0,
+      "p95": 54000.0
+    },
+    "sql": {
+      "n": 10,
+      "p50_lt_ms": 100,
+      "p95_lt_ms": 100,
+      "note": "SQL <100ms"
+    }
+  }
+}

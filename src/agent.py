@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -42,6 +43,10 @@ class AgentResult:
         error: Last error string, if any.
         attempts: Number of generation/execution attempts used.
         messages_used: Length of the chat message list on the last attempt.
+        llm_ms: Cumulative LLM wall time in milliseconds (full completion
+            round-trip, not time-to-first-token).
+        sql_ms: Cumulative SQLite execution time in milliseconds.
+        total_ms: End-to-end ``ask()`` wall time in milliseconds.
     """
 
     question: str
@@ -51,6 +56,9 @@ class AgentResult:
     error: Optional[str] = None
     attempts: int = 0
     messages_used: int = 0
+    llm_ms: float = 0.0
+    sql_ms: float = 0.0
+    total_ms: float = 0.0
 
     def to_answer_payload(self) -> Dict[str, str]:
         """Convert this result into the eval ``{sql, answer}`` payload shape.
@@ -313,68 +321,80 @@ class TextToSQLAgent:
         result = AgentResult(question=question)
         repair_feedback: Optional[str] = None
         last_sql: Optional[str] = None
+        started = time.perf_counter()
 
-        for attempt in range(self.max_retries + 1):
-            result.attempts = attempt + 1
-            messages = self.build_messages(
-                question,
-                repair_feedback=repair_feedback,
-                failed_sql=last_sql,
-            )
-            result.messages_used = len(messages)
-            try:
-                sql = self.generate_sql(messages)
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                result.error = f"LLM error: {exc}"
-                return result
+        try:
+            for attempt in range(self.max_retries + 1):
+                result.attempts = attempt + 1
+                messages = self.build_messages(
+                    question,
+                    repair_feedback=repair_feedback,
+                    failed_sql=last_sql,
+                )
+                result.messages_used = len(messages)
+                try:
+                    t_llm = time.perf_counter()
+                    try:
+                        sql = self.generate_sql(messages)
+                    finally:
+                        result.llm_ms += (time.perf_counter() - t_llm) * 1000.0
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    result.error = f"LLM error: {exc}"
+                    return result
 
-            last_sql = sql
-            result.sql = sql
-            ok, reason = is_safe_select(sql)
-            if not ok:
-                repair_feedback = reason
-                result.error = reason
-                continue
+                last_sql = sql
+                result.sql = sql
+                ok, reason = is_safe_select(sql)
+                if not ok:
+                    repair_feedback = reason
+                    result.error = reason
+                    continue
 
-            try:
-                df = self.execute_sql(sql)
-                rows = df.to_dict(orient="records")
-                # Normalize numpy/pandas scalars for JSON.
-                clean_rows: List[Dict[str, Any]] = []
-                for row in rows:
-                    clean_rows.append(
-                        {
-                            k: (v.item() if hasattr(v, "item") else v)
-                            for k, v in row.items()
-                        }
-                    )
-                result.rows = clean_rows
-                result.summary = format_result_summary(df)
-                result.error = None
+                try:
+                    t_sql = time.perf_counter()
+                    try:
+                        df = self.execute_sql(sql)
+                    finally:
+                        result.sql_ms += (time.perf_counter() - t_sql) * 1000.0
+                    rows = df.to_dict(orient="records")
+                    # Normalize numpy/pandas scalars for JSON.
+                    clean_rows: List[Dict[str, Any]] = []
+                    for row in rows:
+                        clean_rows.append(
+                            {
+                                k: (v.item() if hasattr(v, "item") else v)
+                                for k, v in row.items()
+                            }
+                        )
+                    result.rows = clean_rows
+                    result.summary = format_result_summary(df)
+                    result.error = None
 
-                if self.keep_history:
-                    self.history.append({"role": "user", "content": question})
-                    self.history.append(
-                        {
-                            "role": "assistant",
-                            "content": (
-                                f"SQL:\n{sql}\n\n"
-                                f"Result summary:\n{result.summary}"
-                            ),
-                        }
-                    )
-                    self._trim_history()
-                return result
-            except sqlite3.Error as exc:
-                repair_feedback = str(exc)
-                result.error = repair_feedback
-            except Exception as exc:  # pylint: disable=broad-exception-caught
-                repair_feedback = str(exc)
-                result.error = repair_feedback
+                    if self.keep_history:
+                        self.history.append({"role": "user", "content": question})
+                        self.history.append(
+                            {
+                                "role": "assistant",
+                                "content": (
+                                    f"SQL:\n{sql}\n\n"
+                                    f"Result summary:\n{result.summary}"
+                                ),
+                            }
+                        )
+                        self._trim_history()
+                    return result
+                except sqlite3.Error as exc:
+                    repair_feedback = str(exc)
+                    result.error = repair_feedback
+                except Exception as exc:  # pylint: disable=broad-exception-caught
+                    repair_feedback = str(exc)
+                    result.error = repair_feedback
 
-        result.sql = last_sql
-        if not result.summary:
-            result.summary = (
-                f"Failed after {result.attempts} attempt(s): {result.error}"
-            )
-        return result
+            result.sql = last_sql
+            if not result.summary:
+                result.summary = (
+                    f"Failed after {result.attempts} attempt(s): {result.error}"
+                )
+            return result
+        finally:
+            result.total_ms = (time.perf_counter() - started) * 1000.0

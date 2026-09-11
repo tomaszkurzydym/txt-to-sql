@@ -1,6 +1,6 @@
 # Design Notes — Text-to-SQL PoC
 
-This document answers the README **Things to Consider** and records architecture choices for this PoC and how to extend it in a follow-up session (tools, latency measurement, agent improvements).
+This document answers the README **Things to Consider** and records architecture choices for this PoC and how to extend it in a follow-up session (tools, model routing, agent improvements).
 
 ## Architecture
 
@@ -13,7 +13,7 @@ User question
         -> safety gate (SELECT/WITH only; block DML/DDL)
         -> utils.query_db
         -> on SQLite error: retry with error feedback (<=2 retries)
-        -> structured AgentResult {sql, rows, summary, error, attempts}
+        -> structured AgentResult {sql, rows, summary, error, attempts, llm_ms, sql_ms, total_ms}
 ```
 
 Modules:
@@ -22,10 +22,11 @@ Modules:
 |--------|------|
 | `src/llm_client.py` | OpenAI-compatible Fireworks client; model via `FIREWORKS_MODEL` |
 | `src/schema_context.py` | Prompt-ready schema + value enums (loan status, OWNER/DISPONENT, regions, ...) |
-| `src/agent.py` | Generation, safety, execution, retries, conversation history |
-| `src/cli.py` | Interactive REPL (`uv run cli`) |
+| `src/agent.py` | Generation, safety, execution, retries, conversation history, latency timers |
+| `src/cli.py` | Interactive REPL (`uv run cli`); prints LLM/SQL/total latency |
 | `src/utils.py` | Unchanged helpers: load/query schema, column docs |
 | `scripts/run_eval.py` | Non-interactive run of 10 dev questions -> `dev_answers.json` + pass/fail |
+| `scripts/bench_latency.py` | P50/P95 latency bench on the same 10 questions |
 
 ## What happens when generated SQL doesn't execute?
 
@@ -71,14 +72,26 @@ The CLI keeps a rolling `history` of user questions and assistant SQL+result sum
 
 Target: **under 3s P50** end-to-end.
 
+**Measurement:** `TextToSQLAgent.ask()` records `llm_ms`, `sql_ms`, and `total_ms` with `time.perf_counter`. **`llm_ms` is full LLM wall time** (the complete chat-completion round-trip), **not** time-to-first-token (TTFT). `sql_ms` is SQLite execution only. The CLI prints the split after each query. `scripts/bench_latency.py` runs the 10 dev questions and reports P50/P95.
+
+**Measured on the 10-question dev set:**
+
+| Model | Quality | P50 | P95 |
+|-------|---------|-----|-----|
+| `kimi-k2p6` | 10/10 (eval) | ≈ 6.1s | ≈ 54s |
+| `deepseek-v4p1-flash` | 10/10, all under 3s | ≈ 0.85s | ≈ 2.5s |
+
+kimi-k2p6 is **LLM-dominated** (SQL **<100ms**). EU→US RTT is not the driver of the 6s/54s figures. deepseek-v4p1-flash is **~7× faster at P50** and **~22× faster at P95**.
+
+**Recommendation:** a **model router** — fast default (`deepseek-v4p1-flash`) for the interactive CLI; escalate hard/analytical queries to a stronger reasoning model.
+
 Levers:
 
-1. **Model choice** — `kimi-k2p6` for quality; try `gpt-oss-20b` or smaller for P50 if quality holds.
+1. **Model choice / router** — fast default; escalate hard queries.
 2. **Prompt size** — full schema is fine here; for larger DBs, retrieve top-k tables only.
 3. **Retries** — only on failure (don't pay for a second call on success).
 4. **Temperature 0** — deterministic SQL, better cacheability.
 5. **Connection reuse** — single SQLite connection per CLI session.
-6. Measure TTFT + SQL exec separately in a follow-up.
 
 Accuracy strategy: schema enums + repair loop + offline eval on `dev_questions_with_answers.json` (result-set match, not string-equal SQL).
 
@@ -106,7 +119,7 @@ Fine-tuning beats prompt engineering when error modes are **stable and frequent*
 
 - `FireworksLLM.chat` already accepts `**kwargs` (tools, response_format).
 - `TextToSQLAgent` methods (`generate_sql`, `execute_sql`, `build_messages`) are overridable.
-- `AgentResult` is a stable structured return for tooling / telemetry.
+- `AgentResult` is a stable structured return for tooling / telemetry (`llm_ms`, `sql_ms`, `total_ms`).
 - `get_rag_corpus()` is ready for embedding-based schema retrieval.
 
 

@@ -15,7 +15,7 @@ User question
       → safety gate (SELECT | WITH…SELECT only; comments stripped)
       → SQLite execute (busy_timeout + row cap)
       → on error: repair with failed SQL + error (≤2 retries)
-  → AgentResult {sql, rows, summary, error, attempts}
+  → AgentResult {sql, rows, summary, error, attempts, llm_ms, sql_ms, total_ms}
 ```
 
 Eval (`scripts/run_eval.py`) uses the same agent with `keep_history=False` and
@@ -85,7 +85,7 @@ Fireworks gotcha, not a toy detail.
 
 | Symbol | Role |
 |--------|------|
-| `AgentResult` | Structured turn result; `to_answer_payload()` → eval `{sql, answer}` |
+| `AgentResult` | Structured turn result; `to_answer_payload()` → eval `{sql, answer}`; `llm_ms`/`sql_ms`/`total_ms` |
 | `strip_sql_fences` | Markdown / prose cleanup → single statement with `;` |
 | `_strip_sql_comments` | Remove `--` / `/* */` before safety checks |
 | `is_safe_select` | Single statement; block DML/DDL; allow SELECT or WITH…SELECT |
@@ -111,7 +111,7 @@ to “only generate SELECT”. Comments are stripped so `-- DROP` tricks don’t
 | Symbol | Role |
 |--------|------|
 | `_ensure_repo_root_on_path` | `sys.path` + `chdir` so `data/` and `import src` work from any launch mode |
-| `main` | Load dotenv, require API key, loop: question → `agent.ask` → print SQL/result |
+| `main` | Load dotenv, require API key, loop: question → `agent.ask` → print SQL/result/latency |
 
 Commands: `exit`/`quit`/`q`, `reset` (clears history). Deferred imports after
 dotenv are intentional so the key is available before constructing the client.
@@ -137,7 +137,7 @@ cares about answers and avoids false fails on equivalent queries.
 2. **Full schema in prompt** over RAG: ~8 tables; retrieval miss risk > benefit.
 3. **Open Fireworks model** as default: unit economics + OpenAI-compatible drop-in; proprietary as optional escalation.
 4. **History cap + row cap + busy_timeout**: cheap interactive hardening without rewriting architecture.
-5. **Next Stage-2 moves:** tool-calling (`execute_sql`), latency timers, schema RAG when tables grow.
+5. **Next moves:** tool-calling (`execute_sql`), schema RAG when tables grow. Latency is already split (full LLM wall time, not TTFT).
 
 Docstrings use Google sections (`Args:`, `Returns:`, `Raises:`, `Attributes:`)
 throughout so an interviewer can open any public symbol and get the contract
