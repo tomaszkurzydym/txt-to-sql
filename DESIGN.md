@@ -58,11 +58,29 @@ Why not RAG for this PoC? The schema is small (~8 tables). Stuffing the full doc
 
 ## Open-source (Fireworks) vs proprietary models
 
-Customer pain: GPT-class quality at unsustainable cost (~30k queries/day) and ~7s latency.
+Customer pain: GPT-5.5 quality at unsustainable cost (~30k queries/day) and ~7s latency, with mixed result quality.
 
-- **Fireworks open models** (e.g. `kimi-k2p6`): strong SQL reasoning, lower unit cost, serverless scale, OpenAI-compatible API -> drop-in for GitLab's CLI.
-- **Proprietary**: may still win on hardest analytical questions; useful as a **router/escalation** tier (cheap OSS first, escalate on low confidence).
-- Recommendation: ship OSS default on Fireworks; measure quality/latency/cost on a held-out set; optionally shadow with a proprietary judge during bake-off.
+GPT-5.5 is **not on Fireworks**; proprietary rates below are the **OpenAI API list**. Fireworks rates are **Standard serverless** ([docs](https://docs.fireworks.ai/serverless/pricing)). Mapping: `kimi-k2p6` → **Kimi K2.6**; `deepseek-v4p1-flash` → published **DeepSeek V4 Flash (0731) Flash**.
+
+USD per 1M tokens (**input / cached input / output**):
+
+| Model | Input | Cached input | Output |
+|-------|------:|-------------:|-------:|
+| GPT-5.5 (OpenAI) | $5.00 | $0.50 | $30.00 |
+| Kimi K2.6 | $0.95 | $0.16 | $4.00 |
+| DeepSeek V4 Flash | $0.22 | $0.007 | $0.66 |
+
+**Illustrative 30k queries/day** on this PoC prompt: **~2,250 input tokens** (schema+question), **~50 SQL output tokens** (chars/4 estimate — **not billed usage**). Kimi **reasoning tokens would raise kimi $/query further**.
+
+| Model | Uncached $/query | Uncached $/day | Prompt-cached schema $/day |
+|-------|------------------|----------------|----------------------------|
+| GPT-5.5 | ~$0.013 | ~$379 | ~$82 |
+| Kimi K2.6 | ~$0.0023 | ~$69 (~5.5× cheaper) | ~$17 |
+| DeepSeek V4 Flash | ~$0.0005 | ~$16 (~24× cheaper) | ~$1.60 |
+
+- **Fireworks open models:** 10/10 on the public dev set, OpenAI-compatible drop-in for GitLab's CLI, and ~5.5×–24× lower uncached $/day than GPT-5.5 on this prompt shape.
+- **Proprietary:** may still win on the hardest analytical questions; useful as a **router/escalation** (or judge) tier, not as the default interactive model.
+- **Recommendation:** ship a Fireworks **model router** — fast/cheap default (`deepseek-v4p1-flash`), escalate hard queries to a stronger reasoning model (`kimi-k2p6`). Measure quality/latency/cost on a held-out set.
 
 ## Follow-up questions / conversation context
 

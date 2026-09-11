@@ -41,7 +41,7 @@ We ran the agent non-interactively against `data/dev_questions.json` and compare
 
 Model: `accounts/fireworks/models/kimi-k2p6` (Fireworks serverless).
 
-Artifacts: `dev_answers.json` (model SQL + answer), `DESIGN.md` (architecture trade-offs), and `latency_comparison.md` / `latency_report*.json` (P50/P95 bake-off).
+Artifacts: `dev_answers.json` (model SQL + answer), `DESIGN.md` (architecture trade-offs), and `latency_comparison.md` / `latency_report*.json` (P50/P95 + pricing bake-off).
 
 We validated by (1) live Fireworks inference for every question, (2) executing generated SQL against `financial.sqlite`, and (3) comparing normalized result bags to the published expected results — not by string-matching SQL, since equivalent queries can differ.
 
@@ -52,7 +52,15 @@ We validated by (1) live Fireworks inference for every question, (2) executing g
   - `kimi-k2p6`: **P50 ≈ 6.1s, P95 ≈ 54s**. Latency is **LLM-dominated**; SQL is **<100ms**. EU→US RTT is not the driver.
   - `deepseek-v4p1-flash`: **P50 ≈ 0.85s, P95 ≈ 2.5s**, **10/10**, **all under 3s** (~7× P50 / ~22× P95 vs kimi).
   - **Recommendation:** a **model router** — fast default for the interactive CLI, escalate hard/analytical queries to a stronger reasoning model.
-- **Cost:** Open Fireworks models avoid GPT-class unit economics at your projected ~30k queries/day. The same router (cheap/fast model first, escalate hard queries) keeps cost predictable as you scale past the first 1,000 users.
+- **Cost (illustrative, ~30k queries/day):** Your GPT-5.5 baseline (~7s, mixed quality) is **not on Fireworks** — that row uses the **OpenAI API list**. Fireworks rows are **Standard serverless** ([docs](https://docs.fireworks.ai/serverless/pricing)): `kimi-k2p6` → **Kimi K2.6**; `deepseek-v4p1-flash` → **DeepSeek V4 Flash (0731) Flash**. Token math is this PoC prompt (**~2,250 input** = schema+question, **~50 SQL output**, chars/4 estimate) — **not billed usage**. Kimi **reasoning tokens would raise kimi $/query further**.
+
+| Model | $/1M tokens (input / cached input / output) | Uncached $/query | Uncached $/day | Prompt-cached schema $/day |
+|-------|---------------------------------------------|------------------|----------------|----------------------------|
+| GPT-5.5 (OpenAI) | $5.00 / $0.50 / $30.00 | ~$0.013 | ~$379 | ~$82 |
+| Kimi K2.6 | $0.95 / $0.16 / $4.00 | ~$0.0023 | ~$69 (~5.5× cheaper) | ~$17 |
+| DeepSeek V4 Flash | $0.22 / $0.007 / $0.66 | ~$0.0005 | ~$16 (~24× cheaper) | ~$1.60 |
+
+  Same recommendation as latency: a **model router** (fast/cheap default, escalate hard queries) keeps unit cost predictable past the first 1,000 users.
 
 ## What we'd tackle next (scope to production)
 
