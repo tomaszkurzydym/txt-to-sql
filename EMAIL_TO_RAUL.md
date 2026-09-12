@@ -1,85 +1,69 @@
-# Email to Raul Jimenez
+# Email to Raul
 
 **To:** Raul Jimenez <raul.j@gitlab.com>  
 **From:** Solutions Team <solutions@fireworks.ai>  
 **Subject:** Re: Help Needed: Agentic BI CLI Product for GitLab Customers
 
+---
+
 Hi Raul,
 
-Thanks for the detailed brief — we built a working proof-of-concept that addresses the quality, latency, and cost concerns you raised, using open models on Fireworks rather than a proprietary baseline.
+Thanks for the detailed requirements brief. I built the proof-of-concept that addresses the quality, latency, and cost concerns you raised, against the sample database using open models hosted on our platform. Please see my short write up below.
 
-## What we built
+## Assumptions
 
-An interactive terminal agent (`uv run cli`) that:
+I made a few assumptions:
 
-- Grounds every request in your live SQLite schema **plus** the BIRD column documentation (including value enums like loan status A/B/C/D, OWNER vs DISPONENT, and district regions)
-- Generates read-only SQL via Fireworks (`accounts/fireworks/models/kimi-k2p6` by default; `deepseek-v4p1-flash` as a fast alternative)
-- Executes the query, shows SQL + results + LLM/SQL/total latency, and supports follow-up questions
-- Retries automatically (1–2 times) when SQLite returns an error, feeding the error back to the model
-- Rejects non-SELECT / dangerous statements before execution
+1. **Which engines?** I assumed SQLite only, since that's the sample database. In production, how many engines do your first customers actually bring, and in what order?  
+     
+2. **How wide are customer schemas?** I assumed schemas the size of sample tables (less then 2k tokens) and in my PoC the whole schema card goes in the prompt and nothing is retrieved - at this scale, pruning can only lose information. However above ~15K tokens of schema, retrieval becomes necessary.
 
-This is a deliberate step up from `Convert this question to SQL: {question}`: schema grounding and a repair loop are the main levers that reduce hallucinated tables/columns and invalid SQL.
+## What I built
 
-## Validation on the 10 development questions
+An interactive terminal agent that:
 
-We ran the agent non-interactively against `data/dev_questions.json` and compared result sets to the gold `expected_result` values (column-name-agnostic match).
+* Grounds every request in your live SQLite schema plus the BIRD column documentation (including value enums like loan status A/B/C/D, OWNER vs DISPONENT, and district regions). For your database that's less than 2k tokens — small enough to sit in the system prompt as a cacheable prefix, so no retrieval layer is needed at this scale.   
+* Generates read-only SQL via Fireworks (configurable; I benchmarked kimi-k2p6 and deepseek-v4p1-flash)  
+* Executes the query, shows SQL + results (handles large output) and supports follow-up questions  
+* Retries automatically (1–2 times) when SQLite returns an error, feeding the error back to the model  
+* Rejects non-SELECT / dangerous statements before execution
 
-**Results: 10 / 10 PASS** (all tiers 1–3)
-
-| ID | Result |
-|----|--------|
-| q_001 | PASS |
-| q_002 | PASS |
-| q_003 | PASS |
-| q_004 | PASS |
-| q_005 | PASS |
-| q_006 | PASS |
-| q_007 | PASS |
-| q_008 | PASS |
-| q_009 | PASS |
-| q_010 | PASS |
-
-Model: `accounts/fireworks/models/kimi-k2p6` (Fireworks serverless).
-
-Artifacts: `dev_answers.json` (model SQL + answer), `DESIGN.md` (architecture trade-offs), and `latency_comparison.md` / `latency_report*.json` (P50/P95 + pricing bake-off).
-
-We validated by (1) live Fireworks inference for every question, (2) executing generated SQL against `financial.sqlite`, and (3) comparing normalized result bags to the published expected results — not by string-matching SQL, since equivalent queries can differ.
+In this design, schema grounding and a repair loop are the main levers that reduce hallucinated tables/columns and invalid SQL and improved accuracy. 
 
 ## Key findings
 
-- **Quality:** Schema docs + explicit enum hints (region names, loan status letters, OWNER vs DISPONENT) were enough to reach **10/10** on the public dev set, including tier-3 multi-join questions. Remaining production risk is generalization beyond these 10 questions — hence CI eval expansion below.
-- **Latency (measured, 10 dev questions):** We instrumented end-to-end time and split **LLM vs SQL**. LLM time is **full completion wall time**, not time-to-first-token.
-  - `kimi-k2p6`: **P50 ≈ 6.1s, P95 ≈ 54s**. Latency is **LLM-dominated**; SQL is **<100ms**. EU→US RTT is not the driver.
-  - `deepseek-v4p1-flash`: **P50 ≈ 0.85s, P95 ≈ 2.5s**, **10/10**, **all under 3s** (~7× P50 / ~22× P95 vs kimi).
-  - **Recommendation:** a **model router** — fast default for the interactive CLI, escalate hard/analytical queries to a stronger reasoning model.
-- **Cost (illustrative, ~30k queries/day):** Your GPT-5.5 baseline (~7s, mixed quality) is **not on Fireworks** — that row uses the **OpenAI API list**. Fireworks rows are **Standard serverless** ([docs](https://docs.fireworks.ai/serverless/pricing)): `kimi-k2p6` → **Kimi K2.6**; `deepseek-v4p1-flash` → **DeepSeek V4 Flash (0731) Flash**. Token math is this PoC prompt (**~2,250 input** = schema+question, **~50 SQL output**, chars/4 estimate) — **not billed usage**. Kimi **reasoning tokens would raise kimi $/query further**.
+* **Quality**: Schema docs + explicit enum hints (region names, loan status letters, OWNER vs DISPONENT) were enough to reach 10/10 on the public dev set, including tier-3 multi-join questions. Remaining production risk is generalization beyond these 10 questions.  
+* **Latency**: I instrumented end-to-end wall time (full LLM round-trip + SQLite). On the same 10 questions:  
+  * Quality-first kimi-k2p6: P50 ≈ 6.1s, P95 ≈ 54s   
+  * Latency-oriented deepseek-v4p1-flash: P50 ≈ 0.85s, P95 ≈ 2.5s, 10/10 result-match, all 10 under 3s. This clears the <3s P50 target  
+  * *Recommendation*: implement a router in production (flash/fast default, escalate harder queries to a stronger model) rather than one model for every ask.  
+* **Cost**: Your prototype used GPT-5.5 (~7s). Illustrative 30,000 queries/day using this PoC’s measured prompt (~2,250 input tokens: schema + question) and ~50 SQL output tokens:
 
-| Model | $/1M tokens (input / cached input / output) | Uncached $/query | Uncached $/day | Prompt-cached schema $/day |
-|-------|---------------------------------------------|------------------|----------------|----------------------------|
-| GPT-5.5 (OpenAI) | $5.00 / $0.50 / $30.00 | ~$0.013 | ~$379 | ~$82 |
-| Kimi K2.6 | $0.95 / $0.16 / $4.00 | ~$0.0023 | ~$69 (~5.5× cheaper) | ~$17 |
-| DeepSeek V4 Flash | $0.22 / $0.007 / $0.66 | ~$0.0005 | ~$16 (~24× cheaper) | ~$1.60 |
+| Model | Uncached $/query | Uncached $/day | Prompt-cached $/day |
+| ----- | ----: | ----: | ----: |
+| GPT-5.5 | ~$0.013 | ~$379 | ~$82 |
+| Kimi K2.6 | ~$0.0023 | ~$69 (~5.5× cheaper) | ~$17 |
+| DeepSeek V4 Flash | ~$0.0005 | ~$16 (~24× cheaper) | ~$1.60 |
 
-  Same recommendation as latency: a **model router** (fast/cheap default, escalate hard queries) keeps unit cost predictable past the first 1,000 users.
+So in a nutshell, providing the meaningful context to the model makes the response more accurate and limits hallucinations; using open models make this solution economically viable. DeepSeek Flash is the cost *and* latency default; we can use kimi (or similar) as an escalation tier.
 
-## What we'd tackle next (scope to production)
+## What we should address next
 
-1. **Tool-calling agent loop** — let the model call `list_tables` / `execute_sql` / `sample_rows` instead of a fixed retry wrapper (follow-up live session).
-2. **Schema retrieval** for larger customer DBs — embed `get_rag_corpus()` with `qwen3-embedding-8b`; keep full-schema prompts only for small DBs.
-3. **Eval harness in CI** — expand beyond the 10 public questions; track result-match rate, p50/p95 latency, $/query.
-4. **Safety & tenancy** — read-only DB roles, statement timeouts, row limits, and per-customer connection strings as you envisioned.
-5. **Model router** — default to `deepseek-v4p1-flash` for interactive P50/P95; escalate hard queries to a stronger reasoning model. Keep p50/p95 in CI as the eval set grows.
+1. Schema retrieval for larger customer DBs  
+2. Eval harness in CI — expand beyond the 10 public questions; track result-match rate, p50/p95 latency, $/query so every change is measured  
+3. Safety & tenancy — read-only DB roles, statement timeouts, row limits, and per-customer connection strings as you envisioned.  
+4. Latency budget — we now measure P50/P95 (LLM vs SQL); next is streaming TTFT, model routing in the CLI  
+5. Second engine - whichever dialect your customers actually need.  
+   
 
-## Post-training (fine-tuning) recommendation
+Post-training comes after that, and only once the eval set exists.
 
-Prompt + retrieval should remain the first line of defense. Once you have a few hundred reviewed `(question, gold_sql)` pairs from staging/production — including corrections from the repair loop — we recommend a Fireworks LoRA/fine-tune on your SQL dialect and join patterns. Ship behind the same eval gate (result match + latency). Fine-tuning pays off when failure modes are stable and frequent; it complements, rather than replaces, schema grounding and safety checks. We can also use preference pairs (correct vs incorrect SQL) if you want DPO-style alignment later.
+Post-training (fine-tuning) recommendation  
+Prompt and retrieval should remain the first line of defense. Post-training becomes worth it once failure modes are stable and repeated, and once there's an eval set that can prove a change helped. The data doesn't need hand-written gold SQL: correctness here is verifiable by execution, so the CLI's own logs, every question, query, error, repair and user correction, filter into training pairs automatically. I'd sequence it as a Fireworks LoRA to lock in dialect, output format and repair behaviour, then reinforcement fine-tuning with an execution reward, which is where the accuracy is. Two caveats, I'd tune the schema-independent skill rather than this database's join patterns, since your customers bring their own schemas; and tuned models need dedicated capacity, so at the initial 30K queries/day this buys accuracy and latency control rather than savings. 
 
-## AI assistance note
+I'm happy to walk you through the design and the code, work through the questions above, and plan the next phase. Please send over a time that suits you next week and I will send out an invite.
 
-I used AI coding assistance while implementing and iterating on this PoC (scaffolding, boilerplate, and draft wording), and personally reviewed the architecture, validation approach, and customer-facing recommendations.
+Best regards,   
+Tomasz Kurzydym
 
-Happy to walk through the repo in a follow-up and extend it live (tool calling, model router, agent improvements).
-
-Best regards,  
-Tom Kurzydym  
-Solutions / Field Engineering, Fireworks AI
+AI Engineering Lead, Fireworks AI
