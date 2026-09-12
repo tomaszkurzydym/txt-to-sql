@@ -60,11 +60,13 @@ Post-training comes after that, and only once the eval set exists.
 
 ## Post-training (fine-tuning) recommendation  
 
-Prompt and retrieval should remain the first line of defense. Post-training becomes worth it once failure modes are stable and repeated, and once there's an eval set that can prove a change helped. The data doesn't need hand-written gold SQL: correctness here is verifiable by execution, so the CLI's own logs, every question, query, error, repair and user correction, filter into training pairs automatically. I'd sequence it as a Fireworks LoRA to lock in dialect, output format and repair behaviour, then reinforcement fine-tuning with an execution reward, which is where the accuracy is. Two caveats, I'd tune the schema-independent skill rather than this database's join patterns, since your customers bring their own schemas; and tuned models need dedicated capacity, so at the initial 30K queries/day this buys accuracy and latency control rather than savings. 
+Prompt and retrieval should remain the first line of defense. Post-training becomes worth it once failure modes are stable and repeated, and once there's an eval set that can prove a change helped. The data doesn't need hand-written gold SQL: correctness here is verifiable by execution, so the CLI's own logs, every question, query, error, repair and user correction, filter into training pairs automatically. I'd sequence it as a Fireworks LoRA to lock in dialect, output format and repair behaviour, then reinforcement fine-tuning with an execution reward, which is where the accuracy is. 
+Two caveats: a) I'd tune the schema-independent skill rather than this database's join patterns, since your customers bring their own schemas; b) tuned models need dedicated capacity, so at the initial 30K queries/day this buys accuracy and latency control rather than savings. 
+
 
 I'm happy to walk you through the design and the code, work through the questions above, and plan the next phase. Please send over a time that suits you next week and I will send out an invite.
 
 Best regards,   
 Tomasz Kurzydym
 
-AI Engineering Lead, Fireworks AI
+**AI Engineering Lead, Fireworks AI**
