@@ -1,4 +1,4 @@
-# Text-to-SQL CLI - Home Assignment
+# Text-to-SQL CLI
 
 Interactive text-to-SQL agent for the Czech retail banking sample DB (`financial.sqlite`), running on **Fireworks** open models via the OpenAI-compatible API.
 
