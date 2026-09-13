@@ -56,7 +56,7 @@ In summary: **providing the model with the right semantic context materially imp
 
 1. **Schema retrieval for larger customer databases** — so the same approach scales beyond small schemas.
 2. **Eval harness in CI** — expand beyond the 10 public questions and continuously track result-match rate, P50/P95 latency, repair rate, and cost/query.
-3. **Safety and tenancy** — read-only DB roles, statement timeouts, row limits, and per-customer connection isolation.
+3. **Safety and tenancy** — read-only DB roles, statement timeouts, and per-customer connection isolation.
 4. **Latency optimisation** — break down TTFT/model/SQL time and introduce model routing into the CLI.
 5. **A second SQL engine** — ideally whichever dialect your early customers need most.
 
