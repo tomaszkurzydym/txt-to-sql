@@ -87,4 +87,5 @@ Please send over a time that suits you next week and I'll send an invite.
 Best regards,
 
 Tomasz Kurzydym
+
 **AI Engineering Lead, Fireworks AI**
