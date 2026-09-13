@@ -7,9 +7,9 @@
 ---
 Hi Raul,
 
-Thanks for the detailed requirements brief. I built a proof of concept addressing the quality, latency, and cost concerns you raised, using the sample database and open models hosted on our platform. Below is a short summary of the approach and findings.
+Thanks for the detailed requirements brief. I quickly built a proof of concept addressing the quality, latency, and cost concerns you raised, using the sample database and open models hosted on our platform. Below is a short summary of the approach and findings.
 
-## Assumptions
+## PoC Scope Assumptions
 
 For this PoC I made a few assumptions that would be useful to validate:
 
