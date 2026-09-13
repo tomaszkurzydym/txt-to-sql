@@ -31,7 +31,7 @@ In this design, **good schema grounding plus an execution/repair loop are the ma
 
 ## Key findings
 
-**Quality:** Schema documentation plus explicit semantic hints — region names, loan-status codes, OWNER vs DISPONENT, etc. — were enough to achieve **10/10 result matches on the supplied public dev set**, including tier-3 multi-join questions. The key remaining question is how well this generalizes beyond those 10 examples and across customer schemas.
+**Quality:** Schema documentation plus explicit semantic hints were enough to achieve **10/10 result matches on the supplied public dev set**, including tier-3 multi-join questions. The key remaining question is how well this generalizes beyond those 10 examples and across customer schemas.
 
 **Latency:** I instrumented end-to-end wall time, including the full LLM round trip and SQLite execution.
 
