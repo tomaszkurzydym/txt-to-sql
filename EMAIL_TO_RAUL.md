@@ -80,6 +80,7 @@ There is also a scale benefit. A stronger tuned model may allow a **smaller/fast
 
 Finally, with fine-tuning open models **you can own more of the intelligence layer rather than treating the model as an external black box**. The schema grounding, routing logic, evals, training data, fine-tuned weights and execution feedback loop all become part of your own product IP, giving you more control over quality, security and unit economics as the platform scales.
 
+
 I'm happy to walk you through the design and code, work through the questions above, and discuss how you can take it from PoC to production.
 
 Please send over a time that suits you next week and I'll send an invite.
