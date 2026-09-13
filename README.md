@@ -64,6 +64,7 @@ Checked-in bake-off: [latency_comparison.md](latency_comparison.md) (`kimi-k2p6`
 .
 ├── README.md
 ├── DESIGN.md                 # architecture + Things to Consider
+├── EXECUTION_WALKTHROUGH.md  # step-by-step request path + examples
 ├── EMAIL_TO_RAUL.md          # customer email
 ├── BIRD_LICENSE.md
 ├── dev_answers.json          # live model outputs (after eval)
@@ -99,6 +100,7 @@ Checked-in bake-off: [latency_comparison.md](latency_comparison.md) (`kimi-k2p6`
 - Structured `AgentResult` for later tool-calling / telemetry (`llm_ms`, `sql_ms`, `total_ms`)
 
 See [DESIGN.md](DESIGN.md) for trade-offs (architecture, OSS vs proprietary, latency/cost, post-training).
+See [EXECUTION_WALKTHROUGH.md](EXECUTION_WALKTHROUGH.md) for a step-by-step run with examples.
 
 ## Customer scenario (context)
 

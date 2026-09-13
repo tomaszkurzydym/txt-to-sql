@@ -28,6 +28,19 @@ Modules:
 | `scripts/run_eval.py` | Non-interactive run of 10 dev questions -> `dev_answers.json` + pass/fail |
 | `scripts/bench_latency.py` | P50/P95 latency bench on the same 10 questions |
 
+## Request path (summary)
+
+End-to-end for one question:
+
+1. **CLI** (`src/cli.py`) reads the question and calls `TextToSQLAgent.ask()`.
+2. **Prompt** — system schema card (PRAGMA + BIRD docs + domain enums) + optional history + user question.
+3. **Generate** — Fireworks chat completion → fence-stripped SQL.
+4. **Safety** — allow only `SELECT` / `WITH … SELECT`; reject DML/DDL.
+5. **Execute** — run on `financial.sqlite` via `utils.query_db`.
+6. **Return** — `AgentResult` (sql, rows, summary, latency); on SQL/safety failure, repair ≤2 times with error + failed SQL fed back.
+
+Worked example (Prague account count), repair loop, and CLI output: see [EXECUTION_WALKTHROUGH.md](EXECUTION_WALKTHROUGH.md).
+
 ## What happens when generated SQL doesn't execute?
 
 1. Catch the SQLite/`pandas` error.
