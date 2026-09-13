@@ -77,6 +77,7 @@ Use successful production traces to lock in SQL dialect, formatting, tool use, a
 Because SQL correctness can be verified by running the query, execution success and result correctness can provide a strong training signal. This is where I would expect the largest gains on harder queries.
 
 There is also a scale benefit. A stronger tuned model may allow a **smaller/faster model to handle a larger percentage of traffic successfully before escalation**, improving latency as well as quality. At the initial ~30K queries/day, I would view dedicated fine-tuned capacity primarily as an investment in accuracy, consistency, and latency control. 
+
 Finally, with fine-tuning open models **you can own more of the intelligence layer rather than treating the model as an external black box**. The schema grounding, routing logic, evals, training data, fine-tuned weights and execution feedback loop all become part of your own product IP, giving you more control over quality, security and unit economics as the platform scales.
 
 I'm happy to walk you through the design and code, work through the questions above, and discuss how you can take it from PoC to production.
