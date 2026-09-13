@@ -50,7 +50,7 @@ My recommendation for production would be **model routing rather than one model 
 | Kimi K2.6         |         ~$0.0023 | ~$69 (~5.5× cheaper) |                ~$17 |
 | DeepSeek V4 Flash |         ~$0.0005 |  ~$16 (~24× cheaper) |              ~$1.60 |
 
-So, in short: **providing the model with the right semantic context materially improves accuracy and limits hallucinations, while open models make the economics very attractive.** DeepSeek Flash looks like the natural cost/latency default, with Kimi or a similar stronger model as an escalation tier.
+In summary: **providing the model with the right semantic context materially improves accuracy and limits hallucinations, while open models make the economics very attractive.** DeepSeek Flash looks like the natural cost/latency default, with Kimi or a similar stronger model as an escalation tier.
 
 ## What I would address next
 
