@@ -50,7 +50,7 @@ My recommendation for production would be **model routing rather than one model 
 | Kimi K2.6         |         ~$0.0023 | ~$69 (~5.5× cheaper) |                ~$17 |
 | DeepSeek V4 Flash |         ~$0.0005 |  ~$16 (~24× cheaper) |              ~$1.60 |
 
-In summary: **providing the model with the right semantic context materially improves accuracy and limits hallucinations, while open models make the economics very attractive.** DeepSeek Flash looks like the natural cost/latency default, with Kimi or a similar stronger model as an escalation tier.
+In summary: with minimal effort and simple design I was able to show how **providing the model with the right semantic context materially improves accuracy and limits hallucinations, while open models make the economics very attractive.** DeepSeek Flash looks like the natural cost/latency default, with Kimi or a similar stronger model as an escalation tier. 
 
 ## What I would address next
 
@@ -76,7 +76,7 @@ Use successful production traces to lock in SQL dialect, formatting, tool use, a
 **2. Reinforcement fine-tuning with execution-based rewards**
 Because SQL correctness can be verified by running the query, execution success and result correctness can provide a strong training signal. This is where I would expect the largest gains on harder queries.
 
-There is also a scale benefit. A stronger tuned model may allow a **smaller/faster model to handle a larger percentage of traffic successfully before escalation**, improving latency as well as quality. At the initial ~30K queries/day, I would view dedicated fine-tuned capacity primarily as an investment in accuracy, consistency, and latency control. 
+There is a scale benefit. A stronger tuned model may allow a **smaller/faster model to handle a larger percentage of traffic successfully before escalation**, improving latency as well as quality. At the initial ~30K queries/day, I would view dedicated fine-tuned capacity primarily as an investment in accuracy, consistency, and latency control. 
 
 Finally, with fine-tuning open models **you can own more of the intelligence layer rather than treating the model as an external black box**. The schema grounding, routing logic, evals, training data, fine-tuned weights and execution feedback loop all become part of your own product IP, giving you more control over quality, security and unit economics as the platform scales.
 
