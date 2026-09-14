@@ -7,11 +7,11 @@
 ---
 Hi Raul,
 
-Thanks for the detailed requirements brief. I quickly built a proof of concept addressing the quality, latency, and cost concerns you raised, using the sample database and open models hosted on our platform. Below is a short summary of the approach and findings.
+Thanks for the detailed requirements brief. I have built a proof of concept addressing the quality, latency, and cost concerns you raised, using the sample database and open models hosted on our platform. Below is a short summary of the approach and findings.
 
 ## PoC Scope Assumptions
 
-For this PoC I made a few assumptions that would be useful to validate:
+For this PoC I made a few assumptions:
 
 1. I assumed SQLite only, since that's the sample database. In production, which database engines do your first customers actually bring, and in what order?
 
