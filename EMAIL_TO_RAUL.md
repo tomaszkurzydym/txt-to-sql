@@ -62,23 +62,11 @@ In summary: with minimal effort and simple design I was able to show how **provi
 
 ## Scaling accuracy with post-training
 
-I also think **post-training becomes an increasingly important lever as the product usage scales**.
+As your customer usage scales **post-training becomes an increasingly important lever**.
 
-Prompting and schema retrieval solve the dynamic part of the problem — every customer's schema is different — while fine-tuning can improve the **schema-independent behaviour** that should remain consistent across every customer: SQL generation discipline, dialect handling, tool use, repair behaviour, output formatting, and deciding when a query needs escalation.
+Prompting and schema retrieval handle the dynamic part of the problem — every customer's schema is different. Fine-tuning improves the schema-independent behaviour that should stay consistent across customers: SQL generation discipline, dialect handling, tool use, repair behaviour, output formatting, and knowing when a query needs escalation.
 
-The good news is that the training data can be generated naturally from production usage. Correctness is executable, so the system can capture each question, generated query, database error, repair attempt, successful execution, and user correction. At sufficient scale, this creates a high-quality feedback loop without requiring a large manually labelled SQL dataset.
-
-I would sequence this in two stages:
-
-**1. LoRA / supervised fine-tuning**
-Use successful production traces to lock in SQL dialect, formatting, tool use, and repair behaviour.
-
-**2. Reinforcement fine-tuning with execution-based rewards**
-Because SQL correctness can be verified by running the query, execution success and result correctness can provide a strong training signal. This is where I would expect the largest gains on harder queries.
-
-There is a scale benefit. A stronger tuned model may allow a **smaller/faster model to handle a larger percentage of traffic successfully before escalation**, improving latency as well as quality. At the initial ~30K queries/day, I would view dedicated fine-tuned capacity primarily as an investment in accuracy, consistency, and latency control. 
-
-Finally, with fine-tuning open models **you can own more of the intelligence layer rather than treating the model as an external black box**. The schema grounding, routing logic, evals, training data, fine-tuned weights and execution feedback loop all become part of your own product IP, giving you more control over quality, security and unit economics as the platform scales.
+The training data generates itself from production. Correctness is executable, so the system can capture every question, generated query, database error, repair attempt, successful execution and user correction. At scale that becomes a high-quality feedback loop without a large manually labelled SQL dataset. Fine-tuning open models also means owning more of the intelligence layer rather than treating it as an external black box. Schema grounding, routing logic, evals, training data, tuned weights and the execution feedback loop all become your own product IP — giving you more control over quality, security and unit economics as the platform scales.
 
 
 I'm happy to walk you through the design and code, work through the questions above, and discuss how you can take it from PoC to production.
